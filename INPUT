@@ -1,0 +1,10 @@
+! Sod test
+sod
+100 !number of cells
+tra 1.e-6 !left bc
+tra 1.e-6 !right bc
+ph1o !method
+1e-6 !initial timestep length
+0.25 !CFL
+1.05 !Max volume change ratio
+1.05 !Max timestep increment
