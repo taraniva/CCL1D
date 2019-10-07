@@ -12,7 +12,7 @@ program CCL1D
   	type(vars_type), pointer :: vars_np1 => null()  
   	type(para_type), pointer :: par      => null()
 
-	integer :: pseudobool_output_new
+	integer :: pseudobool_output_new, ic
 	real(kind=rkind) :: time_since_prn, dt_min
 	logical :: bool_lagstep_successful
 
@@ -43,6 +43,15 @@ program CCL1D
   	par%dt         = par%dt_init ! User-provided length of first timestep
 	dt_min         = par%time_fin / 1.e9_d ! mimimum allowed timestep length
 
+	print*, "_________________________________________________________"
+  	print*, ' Number of cells: ', topo%nc
+  	print*, ' Number of nodes: ', topo%nn
+  	print*,' Writing file: vals_',par%file_output_string,' at initial time'
+  	print*,' Writing file: mesh_',par%file_output_string,' at initial time'
+  	print*, "_________________________________________________________"
+  	call write_node_coords(topo,vars_n,par,'mesh')
+  	call write_cell_vals(topo,vars_n,par,'vals')
+
 	call copy_all_vars(topo,vars_n,vars_np1)
 
 	do while(par%time.lt.par%time_fin)
@@ -66,11 +75,6 @@ program CCL1D
 
 			!call lagstep()
 			!*************************** P H M   1 o ***************************
-
-			print*, "RHO"
-			print*, vars_n%rho_c(4)
-			print*, vars_np1%rho_c(4)
-			read*
 
 			call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
 
@@ -130,7 +134,19 @@ program CCL1D
 	 	print*, "_______________________________________________________________"
 	 
 	 	print*, "Time step" ,par%dt
-	 	print*, "nstep:", par%nstep
+		 print*, "nstep:", par%nstep
+
+		do ic = 1,topo%nc
+			print*, vars_n%rho_c(ic)
+			print*, vars_n%u_c(ic)
+			print*, vars_n%ent_c(ic)
+			print*, vars_n%eni_c(ic)
+
+			print*, vars_np1%rho_c(ic)
+			print*, vars_np1%u_c(ic)
+			print*, vars_np1%ent_c(ic)
+			print*, vars_np1%eni_c(ic)
+		enddo
 	end do
 
 	print*, "********************************"

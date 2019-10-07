@@ -119,6 +119,8 @@ module module_solvers
 		! Update nodal positions in vars_np1
 		do in=1,nn
 			vars_np1%x_n(in) = xn(in) + par%dt * un(in)
+			print*, "Nodal velocity"
+			print*, un(in)
 			print*, vars_np1%x_n(in)
 		end do
 
@@ -128,7 +130,7 @@ module module_solvers
 
 	!/////////////////////////////////////////////////////////////////////////
 
-	subroutine calculate_cell_variables(topo,vars_n,vars_np1,par,bool_err)
+	subroutine calculate_cell_variables(topo,vars_n,vars_np1,par,bool_success)
 
 		use module_data
 
@@ -137,7 +139,7 @@ module module_solvers
 		type(para_type), intent(inout) :: par
 		type(vars_type), intent(inout) :: vars_n
 		type(vars_type), intent(inout) :: vars_np1
-		logical,		 intent(inout) :: bool_err
+		logical,		 intent(inout) :: bool_success
 
 		! Local
 		integer :: ic, nc
@@ -148,8 +150,8 @@ module module_solvers
 		! Loop over all cells
 		do ic=1,nc
 			! Density
-			vars_np1%rho_c(ic) = vars_n%rho_c(ic) &
-									+ par%dt/vars_n%mass_c(ic)*(vars_n%u_n(ic+1)-vars_n%u_n(ic))
+			!vars_np1%rho_c(ic) = vars_n%rho_c(ic) &
+			!						+ par%dt/vars_n%mass_c(ic)*(vars_n%u_n(ic+1)-vars_n%u_n(ic))
 			! Pressure
 			vars_np1%u_c(ic) = vars_n%u_c(ic) &
 									- par%dt/vars_n%mass_c(ic)*(vars_n%pre_n(ic+1)-vars_n%pre_n(ic))
@@ -163,13 +165,13 @@ module module_solvers
 			! Negative internal energy test
 			if (vars_np1%eni_c(ic).le.0.0_d) then
 				print*, "NEGATIVE INTERNAL ENERGY IN CELL ", ic
-				bool_err = .FALSE.
+				bool_success = .FALSE.
 				read*
 			else
-				!vars_np1%rho_c(ic) = vars_n%mass_c(ic) / vars_np1%vol_c(ic)
+				vars_np1%rho_c(ic) = vars_n%mass_c(ic) / vars_np1%vol_c(ic)
 				vars_np1%pre_c(ic) = eos_pre(vars_np1%rho_c(ic), vars_np1%eni_c(ic), vars_n%gamma_c(ic))
 
-				bool_err = .TRUE.
+				bool_success = .TRUE.
 			endif
 		end do
 
@@ -237,6 +239,9 @@ module module_solvers
 			do ic=1,nc
 				! Compute from density and pressure
 				vars%ssp_c(ic) = eos_sspp(vars%rho_c(ic),vars%pre_c(ic),vars%gamma_c(ic))
+				!vars%ssp_c(ic) = eos_sspe(vars%eni_c(ic),vars%gamma_c(ic))
+				print*, vars%ssp_c(ic)
+				read*
 			end do
 		endif
 
