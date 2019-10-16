@@ -2,6 +2,8 @@ module module_solvers
 
 	! DEPENDENT ON DATA, EOS
 
+	implicit none
+
 	contains
 
 	subroutine nodal_solver(topo,vars,vars_np1,par)
@@ -18,7 +20,7 @@ module module_solvers
 
 		! Local
 		integer :: in, nn, nc
-		real(kind=rkind) :: rho_lef, u_lef, pre_lef, rho_rig, u_rig, pre_rig, z_lef, z_rig
+		real(kind=rkind) :: rho_lef, u_lef, p_lef, rho_rig, u_rig, p_rig, z_lef, z_rig
 		real(kind=rkind) :: z_denom, u_nodal, pre_nodal
 
 
@@ -70,13 +72,13 @@ module module_solvers
 			! Left state
 			rho_lef = rho(in-1)
 			u_lef = uc(in-1)
-			pre_lef = pre(in-1)
+			p_lef = pre(in-1)
 			z_lef = rho(in-1)*ssp(in-1)
 
 			! Right state
 			rho_rig = rho(in)
 			u_rig = uc(in)
-			pre_rig = pre(in)
+			p_rig = pre(in)
 			z_rig = rho(in)*ssp(in)
 
 			! Denominator z_i + z_i+1
@@ -88,7 +90,7 @@ module module_solvers
 			un(in) = u_nodal
 
 			! Nodal pressure
-			pre_nodal = z_lef*pre_rig + z_rig*pre_lef - z_lef*z_rig*(u_rig - u_lef)
+			pre_nodal = z_lef*p_rig + z_rig*p_lef - z_lef*z_rig*(u_rig - u_lef)
 			pre_nodal = pre_nodal/z_denom
 			pren(in) = pre_nodal
 
@@ -98,7 +100,8 @@ module module_solvers
 		if (par%bc_type_lef.eq.'tra') then
 			! Prescribed pressure
 			pren(1) = par%bc_val_lef
-			un(1) = uc(1) - (pre(1) - pren(1))/(rho(1)*ssp(1))
+			!un(1) = uc(1) - (pre(1) - pren(1))/(rho(1)*ssp(1))
+			un(1) = uc(1) - (pre(1) - par%bc_val_lef)/(rho(1)*ssp(1))
 		elseif(par%bc_type_lef.eq.'vel') then
 			! Prescribed velocity
 			un(1) = par%bc_val_lef
@@ -109,7 +112,8 @@ module module_solvers
 		if (par%bc_type_rig.eq.'tra') then
 			! Prescribed pressure
 			pren(nn) = par%bc_val_rig
-			un(nn) = uc(nc) + (pre(nc) - pren(nn))/(rho(nc)*ssp(nc))
+			!un(nn) = uc(nc) + (pre(nc) - pren(nn))/(rho(nc)*ssp(nc))
+			un(nn) = uc(nc) + (pre(nc) - par%bc_val_rig)/(rho(nc)*ssp(nc))
 		elseif(par%bc_type_rig.eq.'vel') then
 			! Prescribed velocity
 			un(nn) = par%bc_val_rig
@@ -119,9 +123,9 @@ module module_solvers
 		! Update nodal positions in vars_np1
 		do in=1,nn
 			vars_np1%x_n(in) = xn(in) + par%dt * un(in)
-			print*, "Nodal velocity"
-			print*, un(in)
-			print*, vars_np1%x_n(in)
+			!print*, "Nodal velocity"
+			!print*, un(in)
+			!print*, vars_np1%x_n(in)
 		end do
 
 		print*, "EXIT NODAL SOLVER"
@@ -133,6 +137,10 @@ module module_solvers
 	subroutine calculate_cell_variables(topo,vars_n,vars_np1,par,bool_success)
 
 		use module_data
+		use module_eos
+
+		!include "eos_func.h"
+		!include "precision.h"
 
 		! I/O
 		type(topo_type), intent(inout) :: topo
@@ -143,16 +151,22 @@ module module_solvers
 
 		! Local
 		integer :: ic, nc
+		real(kind=rkind) :: eta_np1, eta_n
 
 		nc = topo%nc
 		ic = 0
 
 		! Loop over all cells
 		do ic=1,nc
-			! Density
-			!vars_np1%rho_c(ic) = vars_n%rho_c(ic) &
-			!						+ par%dt/vars_n%mass_c(ic)*(vars_n%u_n(ic+1)-vars_n%u_n(ic))
-			! Pressure
+			!vars_np1%pre_c(ic) = 0.0_d
+
+			! Specific density
+			eta_np1 = 0.0
+			eta_n = 1.0/vars_n%rho_c(ic)
+			eta_np1 = eta_n &
+					+ par%dt/vars_n%mass_c(ic)*(vars_n%u_n(ic+1)-vars_n%u_n(ic))
+			vars_np1%rho_c(ic) = 1.0/eta_np1
+			! Cell centre speed
 			vars_np1%u_c(ic) = vars_n%u_c(ic) &
 									- par%dt/vars_n%mass_c(ic)*(vars_n%pre_n(ic+1)-vars_n%pre_n(ic))
 			! Total energy (density of total energy)
@@ -160,7 +174,7 @@ module module_solvers
 									* (vars_n%pre_n(ic+1)*vars_n%u_n(ic+1) - vars_n%pre_n(ic)*vars_n%u_n(ic))
 			
 			! Internal energy 
-			vars_np1%eni_c(ic) = vars_np1%ent_c(ic) - 0.5_d*vars_n%mass_c(ic)*(vars_np1%u_c(ic)**2)
+			vars_np1%eni_c(ic) = vars_np1%ent_c(ic) - 0.5_d*vars_np1%mass_c(ic)*(vars_np1%u_c(ic)**2)
 
 			! Negative internal energy test
 			if (vars_np1%eni_c(ic).le.0.0_d) then
@@ -168,8 +182,9 @@ module module_solvers
 				bool_success = .FALSE.
 				read*
 			else
-				vars_np1%rho_c(ic) = vars_n%mass_c(ic) / vars_np1%vol_c(ic)
-				vars_np1%pre_c(ic) = eos_pre(vars_np1%rho_c(ic), vars_np1%eni_c(ic), vars_n%gamma_c(ic))
+				
+				!vars_np1%rho_c(ic) = vars_np1%mass_c(ic) / vars_np1%vol_c(ic)
+				vars_np1%pre_c(ic) = eos_pre(vars_np1%rho_c(ic), vars_np1%eni_c(ic), vars_np1%gamma_c(ic))
 
 				bool_success = .TRUE.
 			endif
@@ -214,8 +229,9 @@ module module_solvers
 		! USE BEFORE NODAL SOLVER!!!
 
 		use module_data
+		use module_eos
 
-		include "eos_func.h"
+		!include "eos_func.h"
 
 		! I/O
 		type(topo_type), intent(inout) :: topo
@@ -239,9 +255,10 @@ module module_solvers
 			do ic=1,nc
 				! Compute from density and pressure
 				vars%ssp_c(ic) = eos_sspp(vars%rho_c(ic),vars%pre_c(ic),vars%gamma_c(ic))
+
+				! Compute from internal energy
 				!vars%ssp_c(ic) = eos_sspe(vars%eni_c(ic),vars%gamma_c(ic))
-				print*, vars%ssp_c(ic)
-				read*
+				!print*, vars%ssp_c(ic)
 			end do
 		endif
 
@@ -250,7 +267,10 @@ module module_solvers
 
 	!/////////////////////////////////////////////////////////////////////////////////////
 	function time_step(topo,vars,par)
+
 		use module_data
+
+		real(kind=rkind)             :: time_step
 
 		! I/O
 		type(topo_type), intent(inout) :: topo
@@ -275,6 +295,7 @@ module module_solvers
 		end do
 
 		time_step = min(C_fl*cell_rat_min, C_m*par%dt_prev)
+		!0.001_d
 
 		return
 	end function time_step

@@ -1,6 +1,8 @@
 module module_imexport
 	!Dependent on DATA nad GEOMETRY
 
+	implicit none
+
 	contains
 
 	subroutine copy_all_vars(topo, vars_from, vars_to)
@@ -51,10 +53,11 @@ module module_imexport
 	subroutine setup_test(topo,vars,par)
 		use module_data
 		use module_geometry
+		use module_eos
 
 		implicit none
 
-		include "eos_func.h"
+		!include "eos_func.h"
   		! I/O
   		type(topo_type), intent(inout)  :: topo
   		type(vars_type), intent(inout)  :: vars
@@ -140,7 +143,7 @@ module module_imexport
 						uc(ic) = 0.0_d
 					elseif(xc(ic) .gt. 0.5_d) then
 						rho(ic) = 0.125_d
-						pre(ic) = 1.0_d
+						pre(ic) = 0.1_d
 						uc(ic) = 0.0_d
 					endif
 					eni(ic) = eos_eni(rho(ic),pre(ic),gam0)
@@ -153,7 +156,7 @@ module module_imexport
 		do ic = 1,nc
 			mass(ic) = vol(ic) * rho(ic)
 			ent(ic)  = eni(ic) + 0.5_d * (uc(ic)**2)
-			ssp(ic)  = eos_sspp(rho,pre,gamma)
+			ssp(ic)  = eos_sspp(rho(ic),pre(ic),gam0)
 		enddo
 
 	end subroutine setup_test

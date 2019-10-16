@@ -29,9 +29,6 @@ program CCL1D
 
 	call setup_test(topo,vars_n,par)
 
-	print*, vars_n%x_n(4)
-	read*
-
 	! Starting point status
 	par%file_output_number = -1  ! File counter, so that the first is indexed is 0
 	call get_next_fnum_string(par%file_output_number,par%file_output_string)
@@ -52,7 +49,9 @@ program CCL1D
   	call write_node_coords(topo,vars_n,par,'mesh')
   	call write_cell_vals(topo,vars_n,par,'vals')
 
+	! Initialise with two identical datasets
 	call copy_all_vars(topo,vars_n,vars_np1)
+	call calculate_energy_balance(topo,vars_n)
 
 	do while(par%time.lt.par%time_fin)
 
@@ -62,7 +61,7 @@ program CCL1D
 
 		par%dt = time_step(topo,vars_n,par) ! <- in module_solvers.f90
 		
-		if ( par%dt < dt_min) then
+		if (par%dt < dt_min) then
 			print*,'> Time step too small: ',par%dt,' at step ',par%nstep,', time=',par%time
 			exit
 		endif
@@ -79,8 +78,10 @@ program CCL1D
 			call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
 
 			call calculate_cell_sound_speed(topo,vars_n,par)
+			!call calculate_cell_sound_speed(topo,vars_np1,par)
 
 			call nodal_solver(topo,vars_n,vars_np1,par)
+			!call calculate_cell_sound_speed(topo,vars_np1,par)
 
 			call calculate_geometry(topo,vars_np1,par,bool_lagstep_successful)
 
@@ -106,12 +107,9 @@ program CCL1D
 		! Update time
 		par%time = par%time + par%dt
 
-		par%time = par%time + par%dt
      	if (mod(par%nstep,1)==0) write(*,999) par%nstep, par%dt, par%time
 		999  format('Finished ', i5,'. timestep, dt=', 1pe13.6,', t=', 1pe13.6)
 		time_since_prn = time_since_prn + par%dt
-		 
-		call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
 
 		! Copy all vals for next step
 		call copy_all_vars(topo,vars_np1,vars_n)
@@ -136,17 +134,17 @@ program CCL1D
 	 	print*, "Time step" ,par%dt
 		 print*, "nstep:", par%nstep
 
-		do ic = 1,topo%nc
-			print*, vars_n%rho_c(ic)
-			print*, vars_n%u_c(ic)
-			print*, vars_n%ent_c(ic)
-			print*, vars_n%eni_c(ic)
+		! do ic = 1,topo%nc
+		! 	print*, vars_n%rho_c(ic)
+		! 	print*, vars_n%u_c(ic)
+		! 	print*, vars_n%ent_c(ic)
+		! 	print*, vars_n%eni_c(ic)
 
-			print*, vars_np1%rho_c(ic)
-			print*, vars_np1%u_c(ic)
-			print*, vars_np1%ent_c(ic)
-			print*, vars_np1%eni_c(ic)
-		enddo
+		! 	print*, vars_np1%rho_c(ic)
+		! 	print*, vars_np1%u_c(ic)
+		! 	print*, vars_np1%ent_c(ic)
+		! 	print*, vars_np1%eni_c(ic)
+		! enddo
 	end do
 
 	print*, "********************************"
