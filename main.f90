@@ -28,6 +28,10 @@ program CCL1D
 	call alloc_vars_arrays(topo,vars_np1)
 
 	call setup_test(topo,vars_n,par)
+	print*, "------------------------------------------"
+	print*, "Press ENTER to initiate computation..."
+	print*, "------------------------------------------"
+	read*
 
 	! Starting point status
 	par%file_output_number = -1  ! File counter, so that the first is indexed is 0

@@ -1,0 +1,33 @@
+.SUFFIXES: 
+
+FC=gfortran
+COMPILE.f90 = $(FC) $(FCFLAGS) $(TARGET_ARCH) -c
+MAKEMOD.f90 = $(FC) $(FCFLAGS) $(TARGET_ARCH) -fsyntax-only -c
+
+SOURCES=main.f90 module_data.f90 module_data@proc.f90 \
+		module_geometry.f90 module_geometry@proc.f90 \
+		module_imexport.f90 module_imexport@proc.f90
+
+main: $(subst .f90,.o,$(SOURCES))
+	$(FC) -o $@ $+
+
+.PHONY: clean
+clean:
+	-rm -f *.o *.mod *.smod *.anc main 
+
+%.anc: %.f90
+	$(MAKEMOD.f90) $<
+	@touch $@
+
+%.o: %.anc
+	$(COMPILE.f90) -o $*.o $(<:.anc=.f90)
+	@touch $@
+
+main.anc: module_data.anc module_geometry.anc module_imexport.anc
+module_geometry@proc.anc: module_data.anc
+module_imexport@proc.anc: module_data.anc
+
+module_data.anc: module_data.mod 
+module_geometry.anc: module_geometry.mod
+module_imexport.anc: module_imexport.mod
+module_data.mod module_geometry.mod module_imexport.mod:

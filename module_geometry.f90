@@ -74,8 +74,7 @@ module module_geometry
 
 			vars%x_c(ic) = cxc
 			vars%vol_c(ic) = cvol
-
-			!print*, vars%vol_c(ic)
+			
 		end do
 
 		print*, "EXIT calculate_geometry"

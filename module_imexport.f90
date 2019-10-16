@@ -341,7 +341,6 @@ module module_imexport
 	  
 		do in = 1,topo%nn   
 		   ! prevent exponent overflow
-			print*, xn(in)
 		   round(:) = xn(in)
 		   where (abs(round).le.1.0e-30_d) 
 			  round = 0.0_d
