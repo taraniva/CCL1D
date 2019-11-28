@@ -10,6 +10,7 @@ module module_data
 		integer				:: nstep
 		character(len=4)	:: method
 		integer				:: timestep_type
+		character(len=3)    :: limiter_type
 
 		!Boundary conditions
 		character(len=3)	:: bc_type_lef, bc_type_rig
@@ -39,6 +40,11 @@ module module_data
 
 	end type topo_type
 
+	! 		Every step until the final cell variable computing
+	! 		is going to operate with the vars_n level, therefore
+	! 		even np12 variables are going to be stored in the
+	! 		vars_n level, but will be sufficiently marked
+	! 		for easier recognition.
 	type vars_type
 		!Nodal variables
 		real(kind=rkind), dimension(:), pointer   :: gamma_n
@@ -57,8 +63,21 @@ module module_data
 		real(kind=rkind), dimension(:), pointer   :: eni_c
 		real(kind=rkind), dimension(:), pointer   :: ent_c
 		real(kind=rkind), dimension(:), pointer   :: ssp_c
-		real(kind=rkind), dimension(:), pointer   :: du_c
-		real(kind=rkind), dimension(:), pointer   :: dpre_c
+		!real(kind=rkind), dimension(:), pointer   :: du_c
+		!real(kind=rkind), dimension(:), pointer   :: dpre_c
+
+		!Slopes
+		real(kind=rkind), dimension(:), pointer   :: slope_vel
+		real(kind=rkind), dimension(:), pointer   :: slope_pre
+		!Limiter
+		real(kind=rkind), dimension(:), pointer   :: limcoeff_vel
+		real(kind=rkind), dimension(:), pointer   :: limcoeff_pre
+		!Nodal derivatives
+		real(kind=rkind), dimension(:), pointer   :: du_n
+		real(kind=rkind), dimension(:), pointer   :: dpre_n
+		!np12 variables
+		real(kind=rkind), dimension(:), pointer   :: u_np12
+		real(kind=rkind), dimension(:), pointer   :: pre_np12
 	end type vars_type
 
 	contains
@@ -82,7 +101,6 @@ module module_data
 		allocate(vars%x_n(1:nn))
 		allocate(vars%u_n(1:nn))
 		allocate(vars%pre_n(1:nn))
-
 		!Cell
 		allocate(vars%gamma_c(1:nc))
 		allocate(vars%x_c(1:nc))
@@ -94,8 +112,21 @@ module module_data
 		allocate(vars%eni_c(1:nc))
 		allocate(vars%ent_c(1:nc))
 		allocate(vars%ssp_c(1:nc))
-		allocate(vars%du_c(1:nc))
-		allocate(vars%dpre_c(1:nc))
+
+		! Add if switch for selective allocation
+		! 2nd order only
+		! Cells
+		!allocate(vars%du_c(1:nc))
+		!allocate(vars%dpre_c(1:nc))
+		allocate(vars%slope_vel(1:nc))
+		allocate(vars%slope_pre(1:nc))
+		allocate(vars%limcoeff_vel(1:nc))
+		allocate(vars%limcoeff_pre(1:nc))
+		! Nodal
+		allocate(vars%du_n(1:nn))
+		allocate(vars%dpre_n(1:nn))
+		allocate(vars%u_np12(1:nn))
+		allocate(vars%pre_np12(1:nn))
 
 		print*, "VARS ALLOCATED"
 
@@ -127,8 +158,18 @@ module module_data
 		deallocate(vars%eni_c)
 		deallocate(vars%ent_c)
 		deallocate(vars%ssp_c)
-		deallocate(vars%du_c)
-		deallocate(vars%dpre_c)
+		
+		!2nd order
+		!deallocate(vars%du_c)
+		!deallocate(vars%dpre_c)
+		deallocate(vars%slope_vel)
+		deallocate(vars%slope_pre)
+		deallocate(vars%limcoeff_vel)
+		deallocate(vars%limcoeff_pre)
+		deallocate(vars%du_n)
+		deallocate(vars%dpre_n)
+		deallocate(vars%u_np12)
+		deallocate(vars%pre_np12)
 
 		print*, "VARS DEALLOCATED"
 

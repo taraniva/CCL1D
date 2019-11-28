@@ -12,7 +12,7 @@ program CCL1D
   	type(vars_type), pointer :: vars_np1 => null()  
   	type(para_type), pointer :: par      => null()
 
-	integer :: pseudobool_output_new, ic
+	integer :: pseudobool_output_new, ic, in, nn
 	real(kind=rkind) :: time_since_prn, dt_min
 	logical :: bool_lagstep_successful
 
@@ -70,26 +70,37 @@ program CCL1D
 			exit
 		endif
 
-		if (par%time + par%dt .gt. par%time_fin) par%dt = par%time_fin-par%time
+		if (par%time + par%dt .gt. par%time_fin) par%dt = par%time_fin - par%time
 
 		bool_lagstep_successful = .FALSE.
 		! (Repeat until lagstep successful) .or. (exit if dt is too small)
 		do while (bool_lagstep_successful.eqv..FALSE.)!***************************************************
 
 			!call lagstep()
+			
+			select case(par%method)
 			!*************************** P H M   1 o ***************************
+			case('ph1o')
+				print*,"FIRST ORDER SCHEME"
+				call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
+				call calculate_cell_sound_speed(topo,vars_n,par)
+				call nodal_solver(topo,vars_n,vars_np1,par)
+				call calculate_geometry(topo,vars_np1,par,bool_lagstep_successful)
+				call calculate_cell_variables(topo,vars_n,vars_np1,par,bool_lagstep_successful)
 
-			call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
+			!*************************** P H M   2 o ***************************
+			case('ph2o')
+				print*,"SECOND ORDER SCHEME"
+				call calculate_geometry(topo,vars_n,par,bool_lagstep_successful)
+				call calculate_cell_sound_speed(topo,vars_n,par)
+				call compute_slopes(topo,vars_n,par)
+				call limit_slopes(topo,vars_n,par)
+				call nodal_solver_reconst(topo,vars_n,vars_np1,par)
+				call dnodal_solver(topo,vars_n,par)
+				call calculate_geometry(topo,vars_np1,par,bool_lagstep_successful)
+				call calculate_cell_variables(topo,vars_n,vars_np1,par,bool_lagstep_successful)
 
-			call calculate_cell_sound_speed(topo,vars_n,par)
-			!call calculate_cell_sound_speed(topo,vars_np1,par)
-
-			call nodal_solver(topo,vars_n,vars_np1,par)
-			!call calculate_cell_sound_speed(topo,vars_np1,par)
-
-			call calculate_geometry(topo,vars_np1,par,bool_lagstep_successful)
-
-			call calculate_cell_variables(topo,vars_n,vars_np1,par,bool_lagstep_successful)
+			end select
 
 			! If failed, restart with dt/2
 			if (bool_lagstep_successful.eqv..FALSE.) then
@@ -104,6 +115,9 @@ program CCL1D
 			endif
 
 			if (bool_lagstep_successful.eqv..FALSE.) exit 
+
+			! Prepare next step
+			call copy_all_vars(topo,vars_np1,vars_n)
 
 		end do !*************************************************************************************
 

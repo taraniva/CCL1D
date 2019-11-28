@@ -25,6 +25,8 @@ module module_imexport
 			vars_to%x_n(in) = vars_from%x_n(in)
 			vars_to%u_n(in) = vars_from%u_n(in)
 			vars_to%pre_n(in) = vars_from%pre_n(in)
+			vars_to%du_n(in) = vars_from%du_n(in)
+			vars_to%dpre_n(in) = vars_from%dpre_n(in)
 		end do
 
 		! Cell
@@ -39,8 +41,9 @@ module module_imexport
 			vars_to%eni_c(ic) = vars_from%eni_c(ic)
 			vars_to%ent_c(ic) = vars_from%ent_c(ic)
 			vars_to%ssp_c(ic) = vars_from%ssp_c(ic)
-			vars_to%du_c(ic) = vars_from%du_c(ic)
-			vars_to%dpre_c(ic) = vars_from%dpre_c(ic)
+			! Not reallly necessary
+			vars_to%slope_vel(ic) = vars_from%slope_vel(ic)
+			vars_to%slope_pre(ic) = vars_from%slope_pre(ic)
 		end do
 
 		print*, "STUFF COPIED SUCCESSFULLY"
@@ -209,11 +212,22 @@ module module_imexport
 		read(8,*) par%cfl
 		read(8,*) par%max_vol_change
 		read(8,*) par%max_dt_change
+		read(8,*) par%limiter_type
 		print*, "METHOD (", par%method, ")"
 		print*, "Initial timestep length (", par%dt_init, ")"
 		print*, "CFL (", par%cfl, ")"
 		print*, "Max volume change (", par%max_vol_change, ")" 
 		print*, "Max timestep change (", par%max_dt_change, ")"
+		if(par%method.eq.'ph2o') then
+			select case(par%limiter_type)
+			case('baj')
+				print*, "Limiter type ( Barth-Jespersen )"
+			case('vkr')
+				print*, "Limiter type ( Vankatarishnan )"
+			case('non')
+				print*, "!!! NO SLOPE LIMITER !!!"
+			end select
+		endif
 		print*, "INITIAL PARAMETERS LOADED SUCCESSFULLY"
 		close(8)
 		!print*, "PRESS ENTER TO CONTINUE..."

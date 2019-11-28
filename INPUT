@@ -3,8 +3,9 @@ sod
 100 !number of cells
 tra 1.0 !left bc
 tra 0.1 !right bc
-ph1o !method
+ph2o !method
 5e-6 !initial timestep length
 0.25 !CFL
 1.05 !Max volume change ratio
 1.05 !Max timestep increment
+vkr	 !Limiter type (baj/vkr/non)

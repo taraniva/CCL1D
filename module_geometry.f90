@@ -1,4 +1,7 @@
 module module_geometry
+
+	implicit none
+
 	!DEPENDENT ON DATA
 	contains
 
