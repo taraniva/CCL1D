@@ -151,6 +151,26 @@ module module_imexport
 					endif
 					eni(ic) = eos_eni(rho(ic),pre(ic),gam0)
 				end do
+			case("vil")
+				par%time_fin = 0.8_d
+				par%time_prn = 0.1_d
+				
+				par%xminn = 0.0_d
+				par%xmaxn = 1.0_d
+
+				call setup_mesh(topo,vars,par)
+				call calculate_geometry(topo,vars,par,bool_placeholder)
+
+				gam0 = 3.0_d
+				gamma = gam0
+
+				do ic=1,nc
+					rho(ic) = 1.0 + 0.1*sin(2*pi*xc(ic))
+					pre(ic) = rho(ic)**gam0
+					uc(ic)  = 0.0_d
+					eni(ic) = eos_eni(rho(ic),pre(ic),gam0)
+				enddo
+
 			case default
 				print*,'SETUP_VARS: unknown test ',par%prob
 				stop

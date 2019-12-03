@@ -1,3 +1,15 @@
+! Vilar smooth test
+vil
+100 !number of cells
+per 0.0 !left bc
+per 0.0 !right bc
+ph1o !method
+5e-6 !initial timestep length
+0.10 !CFL
+1.05 !Max volume change ratio
+1.05 !Max timestep increment
+vkr	 !Limiter type (baj/vkr/non)
+
 ! Sod test
 sod
 100 !number of cells

@@ -106,6 +106,31 @@ module module_solvers
 			! Prescribed velocity
 			un(1) = par%bc_val_lef
 			pren(1) = pre(1) + (rho(1)*ssp(1))*(un(1) - uc(1))
+		elseif(par%bc_type_lef.eq.'per') then
+			! Left state
+			rho_lef = rho(nc)
+			u_lef = uc(nc)
+			p_lef = pre(nc)
+			z_lef = rho(nc)*ssp(nc)
+
+			! Right state
+			rho_rig = rho(1)
+			u_rig = uc(1)
+			p_rig = pre(1)
+			z_rig = rho(1)*ssp(1)
+
+			! Denominator z_i + z_i+1
+			z_denom = z_lef + z_rig
+
+			! Nodal velocities
+			u_nodal = z_lef*u_lef + z_rig*u_rig - p_rig + p_lef
+			u_nodal = u_nodal/z_denom
+			un(1) = u_nodal
+
+			! Nodal pressure
+			pre_nodal = z_lef*p_rig + z_rig*p_lef - z_lef*z_rig*(u_rig - u_lef)
+			pre_nodal = pre_nodal/z_denom
+			pren(1) = pre_nodal
 		endif
 
 		! Right boundary
@@ -118,14 +143,39 @@ module module_solvers
 			! Prescribed velocity
 			un(nn) = par%bc_val_rig
 			pren(nn) = pre(nc) - (rho(nc)*ssp(nc))*(un(nn) - uc(nc))
+		elseif(par%bc_type_rig.eq.'per') then
+			! Left state
+			rho_lef = rho(nc)
+			u_lef = uc(nc)
+			p_lef = pre(nc)
+			z_lef = rho(nc)*ssp(nc)
+
+			! Right state
+			rho_rig = rho(1)
+			u_rig = uc(1)
+			p_rig = pre(1)
+			z_rig = rho(1)*ssp(1)
+
+			! Denominator z_i + z_i+1
+			z_denom = z_lef + z_rig
+
+			! Nodal velocities
+			u_nodal = z_lef*u_lef + z_rig*u_rig - p_rig + p_lef
+			u_nodal = u_nodal/z_denom
+			un(nn) = u_nodal
+
+			! Nodal pressure
+			pre_nodal = z_lef*p_rig + z_rig*p_lef - z_lef*z_rig*(u_rig - u_lef)
+			pre_nodal = pre_nodal/z_denom
+			pren(nn) = pre_nodal
 		endif
 
 		! Update nodal positions in vars_np1
 		do in=1,nn
 			vars_np1%x_n(in) = xn(in) + par%dt * un(in)
-			!print*, "Nodal velocity"
-			!print*, un(in)
-			!print*, vars_np1%x_n(in)
+			! print*, "Nodal velocity"
+			! print*, un(in)
+			! print*, vars_np1%x_n(in)
 		end do
 
 		print*, "EXIT NODAL SOLVER"
@@ -206,6 +256,17 @@ module module_solvers
 
 				bool_success = .TRUE.
 			endif
+
+			! if(par%bc_type_lef.eq.'per'.and.par%bc_type_rig.eq.'per') then
+			! 	vars_np1%pre_c(1) = vars_np1%rho_c(nc-1)
+			! 	vars_np1%u_c(1) = vars_np1%rho_c(nc-1)
+			! 	vars_np1%eni_c(1) = vars_np1%eni_c(nc-1)
+
+			! 	vars_np1%pre_c(nc) = vars_np1%rho_c(2)
+			! 	vars_np1%u_c(nc) = vars_np1%rho_c(2)
+			! 	vars_np1%eni_c(nc) = vars_np1%eni_c(2)
+			! endif
+
 		end do
 
 	end subroutine calculate_cell_variables
@@ -604,19 +665,41 @@ module module_solvers
 		if (par%bc_type_lef.eq.'tra') then
 			! Prescribed pressure
 			pre_nodal = par%bc_val_lef
+			u_nodal = uc(1) - (pre_rig - par%bc_val_lef)/z_rig
 
 			! ---------- Hint from 1o nodal solver ----------
 			!un(1) = uc(1) - (pre(1) - pren(1))/(rho(1)*ssp(1))
 
-			u_nodal = uc(1) - (pre_rig - par%bc_val_lef)/z_rig
 		elseif(par%bc_type_lef.eq.'vel') then
 			! Prescribed velocity
 			u_nodal = par%bc_val_lef
+			pre_nodal = pre_rig + z_rig*(par%bc_val_lef - u_rig)
 
 			! ---------- Hint from 1o nodal solver ----------
 			!pren(1) = pre(1) + (rho(1)*ssp(1))*(un(1) - uc(1))
 
-			pre_nodal = pre_rig + z_rig*(par%bc_val_lef - u_rig)
+		elseif(par%bc_type_lef.eq.'per') then
+			! Left state
+			rho_lef = vars_n%rho_c(nc)
+			z_lef = vars_n%rho_c(nc)*vars_n%ssp_c(nc)
+			u_lef = vars_n%u_c(nc) + Phi_vel(nc)*delta_vel(nc)*(xn(nn)-xc(nc))
+			pre_lef = vars_n%pre_c(nc) + Phi_pre(nc)*delta_pre(nc)*(xn(nn)-xc(nc))
+
+			! Right state
+			rho_rig = vars_n%rho_c(1)
+			z_rig = vars_n%rho_c(1)*vars_n%ssp_c(1)
+			u_rig = vars_n%u_c(1) + Phi_vel(1)*delta_vel(1)*(xn(1)-xc(1))
+			pre_rig = vars_n%pre_c(1) + Phi_pre(1)*delta_pre(1)*(xn(1)-xc(1))
+
+			! "Determinant"
+			z_denom = z_lef + z_rig
+
+			! Nodal calculation
+			u_nodal = z_lef*u_lef + z_rig*u_rig - pre_rig + pre_lef
+			u_nodal = u_nodal / z_denom
+			pre_nodal = z_lef*pre_rig + z_rig*pre_lef - z_lef*z_rig*(u_rig - u_lef)
+			pre_nodal = pre_nodal / z_denom
+
 		endif
 
 		! Shove into the data structure
@@ -628,7 +711,7 @@ module module_solvers
 		in = nn
 
 		z_lef = vars_n%rho_c(in-1)*vars_n%ssp_c(in-1)
-		! Reconstruct in the right cell
+		! Reconstruct in the left cell
 		u_lef = vars_n%u_c(in-1) + Phi_vel(in-1)*delta_vel(in-1)*(xn(in)-xc(in-1))
 		pre_lef = vars_n%pre_c(in-1) + Phi_pre(in-1)*delta_pre(in-1)*(xn(in)-xc(in-1))
 		if (par%bc_type_rig.eq.'tra') then
@@ -642,6 +725,29 @@ module module_solvers
 			! Prescribed velocity
 			u_nodal = par%bc_val_rig
 			pre_nodal = pre_lef - z_lef*(u_nodal - u_lef)
+
+		elseif(par%bc_type_rig.eq.'per') then
+			! Left state
+			rho_lef = vars_n%rho_c(nc)
+			z_lef = vars_n%rho_c(nc)*vars_n%ssp_c(nc)
+			u_lef = vars_n%u_c(nc) + Phi_vel(nc)*delta_vel(nc)*(xn(nn)-xc(nc))
+			pre_lef = vars_n%pre_c(nc) + Phi_pre(nc)*delta_pre(nc)*(xn(nn)-xc(nc))
+
+			! Right state
+			rho_rig = vars_n%rho_c(1)
+			z_rig = vars_n%rho_c(1)*vars_n%ssp_c(1)
+			u_rig = vars_n%u_c(1) + Phi_vel(1)*delta_vel(1)*(xn(1)-xc(1))
+			pre_rig = vars_n%pre_c(1) + Phi_pre(1)*delta_pre(1)*(xn(1)-xc(1))
+
+			! "Determinant"
+			z_denom = z_lef + z_rig
+
+			! Nodal calculation
+			u_nodal = z_lef*u_lef + z_rig*u_rig - pre_rig + pre_lef
+			u_nodal = u_nodal / z_denom
+			pre_nodal = z_lef*pre_rig + z_rig*pre_lef - z_lef*z_rig*(u_rig - u_lef)
+			pre_nodal = pre_nodal / z_denom
+
 		endif
 
 		! Shove into the data structure
@@ -674,7 +780,7 @@ module module_solvers
 		real(kind=rkind), dimension(:), pointer   :: Phi_pre => null()
 
 		! Local
-		integer :: in, nn
+		integer :: in, nn, nc
 		real(kind=rkind) :: ssp_lef, delta_pre_lef, delta_vel_lef, z_lef
 		real(kind=rkind) :: ssp_rig, delta_pre_rig, delta_vel_rig, z_rig
 		real(kind=rkind) :: z_denom
@@ -722,6 +828,7 @@ module module_solvers
 		!--------------------- L E F T   B D R Y ---------------------
 		! 					IS THIS CORRECT???????
 		in = 1
+		nc = topo%nc
 		!Right cell state
 		ssp_rig			= vars_n%ssp_c(in)
 		delta_pre_rig 	= Phi_pre(in)*delta_pre(in)
@@ -729,8 +836,33 @@ module module_solvers
 		z_rig 			= vars_n%ssp_c(in)*vars_n%rho_c(in)
 
 		dpre_nodal = 0.0_d
-		du_nodal = (ssp_rig*z_rig*delta_vel_rig - ssp_rig*delta_pre_rig)/z_rig
-		
+		du_nodal = (dpre_nodal - ssp_rig*delta_pre_rig)/z_rig
+
+		if(par%bc_type_lef.eq.'per') then
+			! Left state
+			ssp_lef 		= vars_n%ssp_c(nc)
+			delta_pre_lef	= Phi_pre(nc)*delta_pre(nc)
+			delta_vel_lef	= Phi_vel(nc)*delta_vel(nc)
+			z_lef 			= vars_n%ssp_c(nc)*vars_n%rho_c(nc)
+
+			! Right state
+			ssp_rig			= vars_n%ssp_c(in)
+			delta_pre_rig 	= Phi_pre(in)*delta_pre(in)
+			delta_vel_rig	= Phi_vel(in)*delta_vel(in)
+			z_rig 			= vars_n%ssp_c(in)*vars_n%rho_c(in)
+
+			! "Determinant"
+			z_denom = z_lef + z_rig
+
+			dpre_nodal 	= ssp_rig*z_lef*(delta_pre_rig - z_rig*delta_vel_rig) & 
+								- ssp_lef*z_rig*(delta_pre_lef + z_lef*delta_vel_lef)
+
+			du_nodal 	= (-1.0_d)*( ssp_lef*(delta_pre_lef + z_lef*delta_vel_lef) &
+								+ ssp_rig*(delta_pre_rig - z_rig*delta_vel_rig) )
+			dpre_nodal = dpre_nodal / z_denom
+			du_nodal = du_nodal / z_denom
+		endif
+
 		! Shove into the data structure
 		vars_n%du_n(in) = du_nodal
 		vars_n%dpre_n(in) = dpre_nodal
@@ -748,6 +880,31 @@ module module_solvers
 
 		dpre_nodal = 0.0_d
 		du_nodal = (-1.0_d)*(ssp_lef*delta_pre_lef + ssp_lef*z_lef*delta_vel_lef)
+
+		if(par%bc_type_lef.eq.'per') then
+			! Left state
+			ssp_lef 		= vars_n%ssp_c(nc)
+			delta_pre_lef	= Phi_pre(nc)*delta_pre(nc)
+			delta_vel_lef	= Phi_vel(nc)*delta_vel(nc)
+			z_lef 			= vars_n%ssp_c(nc)*vars_n%rho_c(nc)
+
+			! Right state
+			ssp_rig			= vars_n%ssp_c(1)
+			delta_pre_rig 	= Phi_pre(1)*delta_pre(1)
+			delta_vel_rig	= Phi_vel(1)*delta_vel(1)
+			z_rig 			= vars_n%ssp_c(1)*vars_n%rho_c(1)
+
+			! "Determinant"
+			z_denom = z_lef + z_rig
+
+			dpre_nodal 	= ssp_rig*z_lef*(delta_pre_rig - z_rig*delta_vel_rig) & 
+								- ssp_lef*z_rig*(delta_pre_lef + z_lef*delta_vel_lef)
+
+			du_nodal 	= (-1.0_d)*( ssp_lef*(delta_pre_lef + z_lef*delta_vel_lef) &
+								+ ssp_rig*(delta_pre_rig - z_rig*delta_vel_rig) )
+			dpre_nodal = dpre_nodal / z_denom
+			du_nodal = du_nodal / z_denom
+		endif
 
 		! Shove into the data structure
 		vars_n%du_n(in) = du_nodal

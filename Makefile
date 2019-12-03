@@ -31,5 +31,5 @@ clean:
 #Dependencies
 CCL1D.o: module_data.o module_imexport.o module_geometry.o module_solvers.o module_eos.o
 module_geometry.o: module_data.o
-module_imexport: module_data.o module_geometry.o module_eos.o
-module_solvers: module_data.o module_eos.o
+module_imexport.o: module_data.o module_geometry.o module_eos.o
+module_solvers.o: module_data.o module_eos.o
